@@ -149,10 +149,12 @@ void setup() {
   lcd.createChar((uint8_t)charArrowDown, arrowDown);
   lcd.begin(16, 2); 
   lcd.setCursor(0, 0);
-  lcd.print("HomeMeter"); 
+  lcd.print("HomeMeter v"); 
+  lcd.print(VERSION_COMMIT);
   lcd.setCursor(0, 1);
-  /// last commit
-  lcd.print(COMMIT_HASH);
+  /// last commit date
+  lcd.print(VERSION_DATE);
+  
 
   Serial.begin(115200);
   Serial.println("DHT TEST PROGRAM ");
@@ -172,6 +174,7 @@ void setup() {
   digitalWrite(LED, 1);
  
   bluetooth.begin(9600);
+  lcd.clear();
 }
 
 void loop() {
