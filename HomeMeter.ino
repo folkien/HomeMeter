@@ -1,4 +1,12 @@
+/*
+ * TODO Digital Inputs buttons
+ * TODO Limits of temperature and humidity
+ * TODO RTC date/time setting getting
+ * TODO Room select
+ * TODO Menu 
+ */
 #include "version.h"
+
 #include <LiquidCrystal.h> //Dołączenie bilbioteki
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7); //Informacja o podłączeniu nowego wyświetlacza
 
@@ -41,8 +49,63 @@ enum lcdExtraCharacter {
     charArrowDown = 2,
 };
 
+/// KEYS
+/// ------------------------
+
+#define KEY_OK 12
+#define KEY_UP 11
+#define KEY_DOWN 10
+
+enum eKeyState {
+  keyNone = 0,
+  keyOK = 1,
+  keyUp = 2,
+  keyDown = 4,
+};
+
+eKeyState GetKeyState() 
+{
+  byte keyState[3];
+  
+  keyState[0] = digitalRead(KEY_OK); 
+  keyState[1] = digitalRead(KEY_UP);
+  keyState[2] = digitalRead(KEY_DOWN);
+  delay(10);
+  keyState[0] &= digitalRead(KEY_OK); 
+  keyState[1] &= digitalRead(KEY_UP);
+  keyState[2] &= digitalRead(KEY_DOWN);
+  
+  /// only one key could be pressed
+  if (keyState[0])
+  {
+    return keyOK;
+  }
+  else if (keyState[1])
+  {
+    return keyUp;
+  }
+  else if (keyState[2])
+  {
+    return keyDown;
+  }
+  return keyNone;
+}
+
 #include "SoftwareSerial.h"
+#include "hc05.h"
 SoftwareSerial bluetooth(A0, A1); // RX, TX - odwrotnie
+
+#define BT_KEY A2
+
+void bluetooth_setName(const char * name)
+{
+  char cmdBuffer[30];
+  sprintf(cmdBuffer,"AT+NAME=HomeMeter-%s\r\n",name);
+  
+  bluetooth.print(cmdBuffer);
+}
+
+
 
 #include <dht.h>
 
@@ -52,12 +115,15 @@ dht DHT;
 #define LED 13
 
 typedef struct measurement {
-    byte value;
+    signed char value;
     byte previousValue;
+    byte lowLimit;
+    byte highLimit;
 };
 
-measurement temperature;
-measurement humidity;
+/// default room settings
+measurement temperature = {0,0,19,30};
+measurement humidity    = {0,0,35,60};
 
 void GetMeasurements()
 {
@@ -143,6 +209,15 @@ void ScreenHome()
 
 
 void setup() {
+  // GPIOS
+  pinMode(LED, OUTPUT);
+  pinMode(KEY_OK, INPUT_PULLUP);
+  pinMode(KEY_UP, INPUT_PULLUP);
+  pinMode(KEY_DOWN, INPUT_PULLUP);
+  pinMode(BT_KEY, OUTPUT);
+  digitalWrite(LED, HIGH);
+  digitalWrite(BT_KEY, LOW);
+  
   /// init LCD 2x16
   lcd.createChar((uint8_t)charStable, stable);
   lcd.createChar((uint8_t)charArrowUp, arrowUp);
@@ -163,7 +238,7 @@ void setup() {
   Serial.println();
   Serial.println("Type,\tstatus,\tHumidity (%),\tTemperature (C)");
   
-  pinMode(LED, OUTPUT);
+  /// series of blinks 
   for (int i = 0; i < 20; ++i)
   {
     digitalWrite(LED, HIGH);
