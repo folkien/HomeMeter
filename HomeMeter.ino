@@ -1,47 +1,45 @@
-/*
-  LiquidCrystal Library - Hello World
-
-  Demonstrates the use a 16x2 LCD display.  The LiquidCrystal
-  library works with all LCD displays that are compatible with the
-  Hitachi HD44780 driver. There are many of them out there, and you
-  can usually tell them by the 16-pin interface.
-
-  This sketch prints "Hello World!" to the LCD
-  and shows the time.
-
-  The circuit:
-   LCD RS pin to digital pin 12
-   LCD Enable pin to digital pin 11
-   LCD D4 pin to digital pin 5
-   LCD D5 pin to digital pin 4
-   LCD D6 pin to digital pin 3
-   LCD D7 pin to digital pin 2
-   LCD R/W pin to ground
-   LCD VSS pin to ground
-   LCD VCC pin to 5V
-   10K resistor:
-   ends to +5V and ground
-   wiper to LCD VO pin (pin 3)
-
-  Library originally added 18 Apr 2008
-  by David A. Mellis
-  library modified 5 Jul 2009
-  by Limor Fried (http://www.ladyada.net)
-  example added 9 Jul 2009
-  by Tom Igoe
-  modified 22 Nov 2010
-  by Tom Igoe
-  modified 7 Nov 2016
-  by Arturo Guadalupi
-
-  This example code is in the public domain.
-
-  http://www.arduino.cc/en/Tutorial/LiquidCrystalHelloWorld
-
-*/
-
+#include "version.h"
 #include <LiquidCrystal.h> //Dołączenie bilbioteki
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7); //Informacja o podłączeniu nowego wyświetlacza
+
+byte stable[8] = {
+  B00000,
+  B10001,
+  B00000,
+  B00000,
+  B10001,
+  B01110,
+  B00000,
+};
+
+byte arrowUp[8] = {
+	0b00100,
+	0b01110,
+	0b11111,
+	0b00100,
+	0b00100,
+	0b00100,
+	0b00100,
+	0b00100
+};
+
+byte arrowDown[8] = {
+	0b00100,
+	0b00100,
+	0b00100,
+	0b00100,
+	0b00100,
+	0b11111,
+	0b01110,
+	0b00100
+};
+
+
+enum lcdExtraCharacter {
+    charStable = 0,
+    charArrowUp = 1,
+    charArrowDown = 2,
+};
 
 #include "SoftwareSerial.h"
 SoftwareSerial bluetooth(A0, A1); // RX, TX - odwrotnie
@@ -53,50 +51,16 @@ dht DHT;
 #define DHT11_PIN 8
 #define LED 13
 
-void ScreenHome()
+typedef struct measurement {
+    byte value;
+    byte previousValue;
+};
+
+measurement temperature;
+measurement humidity;
+
+void GetMeasurements()
 {
-  /// linia z datą
-  lcd.setCursor(0, 0); //Ustawienie kursora
-  lcd.print("Current date.");
-  // linia z wartościami
-  lcd.setCursor(0, 1);
-  lcd.print("T:");
-  lcd.print(DHT.temperature, 1);
-  lcd.print("C ");
-  lcd.print("W:");
-  lcd.print(DHT.humidity, 1);
-  lcd.print("%");  
-}
-
-
-void setup() {
-  pinMode(LED, OUTPUT);
-  for (int i = 0; i < 20; ++i)
-  {
-    digitalWrite(LED, HIGH);
-    delay(100);
-    digitalWrite(LED, LOW);
-    delay(100);
-  }
-  digitalWrite(LED, 1);
-  Serial.begin(115200);
-  Serial.println("DHT TEST PROGRAM ");
-  Serial.print("LIBRARY VERSION: ");
-  Serial.println(DHT_LIB_VERSION);
-  Serial.println();
-  Serial.println("Type,\tstatus,\tHumidity (%),\tTemperature (C)");
-
-  bluetooth.begin(9600);
-  lcd.begin(16, 2); //Deklaracja typu
-  lcd.setCursor(0, 0); //Ustawienie kursora
-  lcd.print("Kurs Arduino"); //Wyświetlenie tekstu
-  lcd.setCursor(0, 1); //Ustawienie kursora
-  lcd.print("Na Forbocie!"); //Wyświetlenie tekstu
-}
-
-void loop() {
-  // READ DATA
-  //  Serial.print("DHT11, \t");
   int chk = DHT.read11(DHT11_PIN);
   switch (chk)
   {
@@ -122,18 +86,109 @@ void loop() {
       Serial.print("Unknown error,\t");
       break;
   }
+  temperature.previousValue = temperature.value;
+  temperature.value = DHT.temperature;
+  humidity.previousValue = humidity.value;
+  humidity.value = DHT.humidity;
+}
+
+const char * rooms [] = {"Pokoj", "Dzieciecy", "Kuchnia", "Lazienka"};
+const char * currentRoom = rooms[0];
+
+void ScreenRoomSelect()
+{
+
+}
+
+void ScreenHome()
+{
+  /// linia z datą
+  lcd.setCursor(0, 0); //Ustawienie kursora
+  lcd.print(currentRoom);
+  lcd.print(" HH:MM.");
+
+  // linia z wartościami
+  lcd.setCursor(0, 1);
+  lcd.print("T:");
+  lcd.print(temperature.value, 1);
+  lcd.print("C");
+  if (temperature.value == temperature.previousValue)
+  {
+    lcd.print(" ");
+  }
+  else if (temperature.value > temperature.previousValue)
+  {
+    lcd.write((uint8_t)charArrowUp);
+  }
+  else 
+  {
+    lcd.write((uint8_t)charArrowDown);
+  }
+  lcd.print(" W:");
+  lcd.print(humidity.value, 1);
+  lcd.print("%");  
+  if (humidity.value == humidity.previousValue)
+  {
+    lcd.print(" ");
+  }
+  else if (humidity.value > humidity.previousValue)
+  {
+    lcd.write((uint8_t)charArrowUp);
+  }
+  else 
+  {
+    lcd.write((uint8_t)charArrowDown);
+  }
+}
+
+
+void setup() {
+  /// init LCD 2x16
+  lcd.createChar((uint8_t)charStable, stable);
+  lcd.createChar((uint8_t)charArrowUp, arrowUp);
+  lcd.createChar((uint8_t)charArrowDown, arrowDown);
+  lcd.begin(16, 2); 
+  lcd.setCursor(0, 0);
+  lcd.print("HomeMeter"); 
+  lcd.setCursor(0, 1);
+  /// last commit
+  lcd.print(COMMIT_HASH);
+
+  Serial.begin(115200);
+  Serial.println("DHT TEST PROGRAM ");
+  Serial.print("LIBRARY VERSION: ");
+  Serial.println(DHT_LIB_VERSION);
+  Serial.println();
+  Serial.println("Type,\tstatus,\tHumidity (%),\tTemperature (C)");
+  
+  pinMode(LED, OUTPUT);
+  for (int i = 0; i < 20; ++i)
+  {
+    digitalWrite(LED, HIGH);
+    delay(100);
+    digitalWrite(LED, LOW);
+    delay(100);
+  }
+  digitalWrite(LED, 1);
+ 
+  bluetooth.begin(9600);
+}
+
+void loop() {
+  GetMeasurements();
+
   // DISPLAY DATA
-  Serial.print(DHT.humidity);
+  Serial.print(humidity.value);
   Serial.print(",\t");
-  Serial.println(DHT.temperature);
+  Serial.println(temperature.value);
 
   ScreenHome();
   
   // Bluetooth
   bluetooth.print("E");
-  bluetooth.print(DHT.humidity);
+  bluetooth.print(humidity.value);
   bluetooth.print(",");
-  bluetooth.print(DHT.temperature);
+  bluetooth.print(temperature.value);
   bluetooth.print("\n");
 
   delay(2000);
