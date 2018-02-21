@@ -181,6 +181,7 @@ void setup() {
 
   /// first measurements
   GetMeasurements();
+  SetTimeout(measureTimeout);
 }
 
 void loop() {
@@ -236,7 +237,7 @@ void loop() {
       break;
     }
   }
-  delay(100); //1s
+  delay(300); //ms
 
   if (IsTimeout(measureTimeout))
   {
@@ -247,13 +248,13 @@ void loop() {
     Serial.print(humidity.value);
     Serial.print(",\t");
     Serial.println(temperature.value);
-
-    // Bluetooth DATA
-    bluetooth.print("E");
-    bluetooth.print(humidity.value);
-    bluetooth.print(",");
-    bluetooth.print(temperature.value);
-    bluetooth.print("\n");
+//
+//    // Bluetooth DATA
+//    bluetooth.print("E");
+//    bluetooth.print(humidity.value);
+//    bluetooth.print(",");
+//    bluetooth.print(temperature.value);
+//    bluetooth.print("\n");
   }
 
 }
