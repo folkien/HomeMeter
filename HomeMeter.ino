@@ -245,9 +245,9 @@ void loop() {
     SetTimeout(measureTimeout);
 
     // DISPLAY DATA
-    Serial.print(humidity.value);
-    Serial.print(",\t");
-    Serial.println(temperature.value);
+//    Serial.print(humidity.value);
+//    Serial.print(",\t");
+//    Serial.println(temperature.value);
 //
 //    // Bluetooth DATA
 //    bluetooth.print("E");
