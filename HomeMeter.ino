@@ -1,8 +1,6 @@
 /*
- * TODO Digital Inputs buttons
  * TODO Limits of temperature and humidity
  * TODO RTC date/time setting getting
- * TODO Room select
  * TODO Menu 
  */
 #include "version.h"
@@ -28,10 +26,10 @@ dht DHT;
 #define LED 13
 
 typedef struct measurement {
-    signed char value;
-    byte previousValue;
-    byte lowLimit;
-    byte highLimit;
+    int8_t value;
+    int8_t previousValue;
+    int8_t lowLimit;
+    int8_t highLimit;
 };
 
 /// default room settings
@@ -204,6 +202,10 @@ void loop() {
       {
         case menuLimits:
         {
+          ScreenValue("Temperature Max",temperature.highLimit,-30,100);
+          ScreenValue("Temperature Min",temperature.lowLimit,-30,100);
+          ScreenValue("Humidity Max",humidity.highLimit,0,100);
+          ScreenValue("Humidity Min",humidity.lowLimit,0,100);
           break;
         }
         case menuSound:
@@ -234,7 +236,7 @@ void loop() {
       break;
     }
   }
-  delay(1000); //1s
+  delay(100); //1s
 
   if (IsTimeout(measureTimeout))
   {

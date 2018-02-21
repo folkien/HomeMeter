@@ -51,15 +51,16 @@ byte arrowDown[8] = {
 };
 
 
-void show(uint8_t lineNumber, const char * text)
+void ShowText(uint8_t lineNumber, const char * text)
 {
-  byte textLength = strlen(text);
-  if (textLength>16)
-  {
-    textLength = 16;
-  }
-  memset(line,' ',16);
-  memcpy(line,text,textLength);
+  sprintf(line,"%-16s",text);
+  lcd.setCursor(0,lineNumber);
+  lcd.print(line);
+}
+
+void ShowMenuText(uint8_t lineNumber, uint8_t menuPosition, const char* text)
+{
+  sprintf(line,"%d.%-16s",menuPosition,text);
   lcd.setCursor(0,lineNumber);
   lcd.print(line);
 }
@@ -81,12 +82,12 @@ uint8_t ScreenSelect(const char * title, const char **texts, uint8_t numberOfTex
   eKeyState key = keyNone;
 
   lcd.clear();
-  show(0,title);
+  ShowText(0,title);
   while (key != keyOK)
   {
 
-    show(1,texts[currentPosition]);
-    delay(100);
+    ShowMenuText(1,currentPosition,texts[currentPosition]);
+//    delay(100);
     switch (key = GetKeyState())
     {
       case keyUp :
@@ -116,6 +117,40 @@ uint8_t ScreenSelect(const char * title, const char **texts, uint8_t numberOfTex
     }
   }
   return currentPosition;
+}
+
+uint8_t ScreenValue(const char* title, int8_t& value, int8_t minValue,
+                    int8_t maxValue)
+{
+  char valueText[16];
+  eKeyState key = keyNone;
+  lcd.clear();
+  ShowText(0,title);
+  while (key != keyOK)
+  {
+    sprintf(line, "%d [%d..%d]",value, minValue, maxValue);
+    ShowText(1,line);
+    switch (key = GetKeyState())
+    {
+      case keyUp :
+      {
+        if (value < maxValue)
+        {
+          ++value;
+        }
+        break;
+      }
+      case keyDown :
+      {
+        if (value > minValue)
+        {
+          --value;
+        }
+        break;
+      }
+    }
+  }
+  return value;
 }
 // -----------------------------------------------------------------------------
 // End of file -----------------------------------------------------------------

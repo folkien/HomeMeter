@@ -21,8 +21,10 @@ enum lcdExtraCharacter {
 };
 
 void lcdInit();
-void show(uint8_t lineNumber, const char * text);
+void ShowText(uint8_t lineNumber, const char * text);
+void ShowMenuText(uint8_t lineNumber, uint8_t menuPosition, const char* text);
 uint8_t ScreenSelect(const char * title, const char **texts, uint8_t numberOfTexts);
+uint8_t ScreenValue(const char* title, int8_t& value, int8_t minValue, int8_t maxValue);
 
 
 
