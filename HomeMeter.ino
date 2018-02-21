@@ -180,6 +180,9 @@ void setup() {
 
   currentRoom = rooms[ ScreenSelect("Wybierz pokoj:",rooms,array_sizeof(rooms))];
   lcd.clear();
+
+  /// first measurements
+  GetMeasurements();
 }
 
 void loop() {
@@ -233,9 +236,10 @@ void loop() {
   }
   delay(1000); //1s
 
-  if (isTimeout(measureTimeout))
+  if (IsTimeout(measureTimeout))
   {
     GetMeasurements();
+    SetTimeout(measureTimeout);
 
     // DISPLAY DATA
     Serial.print(humidity.value);

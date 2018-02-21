@@ -16,8 +16,8 @@ typedef struct {
   unsigned long duration;
 } sTimeout;
 
-bool isTimeout(sTimeout &t);
-void setTimeout(sTimeout &t);
+bool IsTimeout(sTimeout &t);
+void SetTimeout(sTimeout &t);
 
 
 

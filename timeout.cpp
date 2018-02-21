@@ -11,12 +11,12 @@
 #include "timeout.h"
 #include <wiring_private.h>
 
-bool isTimeout(sTimeout &t)
+bool IsTimeout(sTimeout &t)
 {
   return ((millis() - t.start) > t.duration);
 }
 
-void setTimeout(sTimeout& t)
+void SetTimeout(sTimeout &t)
 {
   t.start = millis();
 }
