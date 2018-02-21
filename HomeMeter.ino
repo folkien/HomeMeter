@@ -6,108 +6,21 @@
  * TODO Menu 
  */
 #include "version.h"
-
-#include <LiquidCrystal.h> //Dołączenie bilbioteki
-LiquidCrystal lcd(2, 3, 4, 5, 6, 7); //Informacja o podłączeniu nowego wyświetlacza
-
-byte stable[8] = {
-  B00000,
-  B10001,
-  B00000,
-  B00000,
-  B10001,
-  B01110,
-  B00000,
-};
-
-byte arrowUp[8] = {
-	0b00100,
-	0b01110,
-	0b11111,
-	0b00100,
-	0b00100,
-	0b00100,
-	0b00100,
-	0b00100
-};
-
-byte arrowDown[8] = {
-	0b00100,
-	0b00100,
-	0b00100,
-	0b00100,
-	0b00100,
-	0b11111,
-	0b01110,
-	0b00100
-};
-
-
-enum lcdExtraCharacter {
-    charStable = 0,
-    charArrowUp = 1,
-    charArrowDown = 2,
-};
-
-/// KEYS
-/// ------------------------
-
-#define KEY_OK 12
-#define KEY_UP 11
-#define KEY_DOWN 10
-
-enum eKeyState {
-  keyNone = 0,
-  keyOK = 1,
-  keyUp = 2,
-  keyDown = 4,
-};
-
-eKeyState GetKeyState() 
-{
-  byte keyState[3];
-  
-  keyState[0] = digitalRead(KEY_OK); 
-  keyState[1] = digitalRead(KEY_UP);
-  keyState[2] = digitalRead(KEY_DOWN);
-  delay(10);
-  keyState[0] &= digitalRead(KEY_OK); 
-  keyState[1] &= digitalRead(KEY_UP);
-  keyState[2] &= digitalRead(KEY_DOWN);
-  
-  /// only one key could be pressed
-  if (keyState[0])
-  {
-    return keyOK;
-  }
-  else if (keyState[1])
-  {
-    return keyUp;
-  }
-  else if (keyState[2])
-  {
-    return keyDown;
-  }
-  return keyNone;
-}
-
-#include "SoftwareSerial.h"
-#include "hc05.h"
-SoftwareSerial bluetooth(A0, A1); // RX, TX - odwrotnie
-
-#define BT_KEY A2
-
-void bluetooth_setName(const char * name)
-{
-  char cmdBuffer[30];
-  sprintf(cmdBuffer,"AT+NAME=HomeMeter-%s\r\n",name);
-  
-  bluetooth.print(cmdBuffer);
-}
-
-
-
 #include <dht.h>
+#include "hc05.h"
+#include "lcd.h"
+#include "timeout.h"
+#include "keys.h"
+#include "bluetooth.h"
+
+extern LiquidCrystal lcd;
+extern SoftwareSerial bluetooth;
+
+#define array_sizeof(x) (sizeof(x)/sizeof(x[0]))
+
+
+
+
 
 dht DHT;
 
@@ -124,6 +37,7 @@ typedef struct measurement {
 /// default room settings
 measurement temperature = {0,0,19,30};
 measurement humidity    = {0,0,35,60};
+sTimeout measureTimeout  = {0,30000}; // 30s
 
 void GetMeasurements()
 {
@@ -158,13 +72,25 @@ void GetMeasurements()
   humidity.value = DHT.humidity;
 }
 
+enum eScreens {
+  screenHome,
+  screenMenu,
+  screenRoom,
+};
+
+enum eMenuOptions {
+  menuLimits,
+  menuDateTime,
+  menuSound,
+  menuRoom,
+  menuExit,
+};
+
+eScreens screen = screenHome;
+
+const char * menu [] = {"Limity", "Ustaw czas", "Dzwiek", "Wybierz pokoj", "Wyjscie"};
 const char * rooms [] = {"Pokoj", "Dzieciecy", "Kuchnia", "Lazienka"};
 const char * currentRoom = rooms[0];
-
-void ScreenRoomSelect()
-{
-
-}
 
 void ScreenHome()
 {
@@ -207,6 +133,11 @@ void ScreenHome()
   }
 }
 
+void ScreenMenu()
+{
+  ScreenSelect("::Menu::",menu,array_sizeof(menu));
+}
+
 
 void setup() {
   // GPIOS
@@ -219,11 +150,7 @@ void setup() {
   digitalWrite(BT_KEY, LOW);
   
   /// init LCD 2x16
-  lcd.createChar((uint8_t)charStable, stable);
-  lcd.createChar((uint8_t)charArrowUp, arrowUp);
-  lcd.createChar((uint8_t)charArrowDown, arrowDown);
-  lcd.begin(16, 2); 
-  lcd.setCursor(0, 0);
+  lcdInit();
   lcd.print("HomeMeter v"); 
   lcd.print(VERSION_COMMIT);
   lcd.setCursor(0, 1);
@@ -237,6 +164,9 @@ void setup() {
   Serial.println(DHT_LIB_VERSION);
   Serial.println();
   Serial.println("Type,\tstatus,\tHumidity (%),\tTemperature (C)");
+
+  /// start bluetooth
+  bluetooth.begin(9600);
   
   /// series of blinks 
   for (int i = 0; i < 20; ++i)
@@ -247,29 +177,79 @@ void setup() {
     delay(100);
   }
   digitalWrite(LED, 1);
- 
-  bluetooth.begin(9600);
+
+  currentRoom = rooms[ ScreenSelect("Wybierz pokoj:",rooms,array_sizeof(rooms))];
   lcd.clear();
 }
 
 void loop() {
-  GetMeasurements();
+  switch (screen)
+  {
+    case screenHome:
+    {
+      ScreenHome();
+      if (GetKeyState() == eKeyState::keyOK)
+      {
+        screen = screenMenu;
+      }
+      break;
+    }
+    case screenMenu:
+    {
+      eMenuOptions menuOption = (eMenuOptions)ScreenSelect("::Menu::",menu,array_sizeof(menu));
+      switch (menuOption)
+      {
+        case menuLimits:
+        {
+          break;
+        }
+        case menuSound:
+        {
+          break;
+        }
+        case menuDateTime:
+        {
+          break;
+        }
+        case menuRoom:
+        {
+          screen = screenRoom;
+          break;
+        }
+        case menuExit:
+        {
+          screen = screenHome;
+          break;
+        }
+      }
+      break;
+    }
+    case screenRoom:
+    {
+      currentRoom = rooms[ ScreenSelect("Wybierz pokoj:",rooms,array_sizeof(rooms))];
+      screen = screenMenu;
+      break;
+    }
+  }
+  delay(1000); //1s
 
-  // DISPLAY DATA
-  Serial.print(humidity.value);
-  Serial.print(",\t");
-  Serial.println(temperature.value);
+  if (isTimeout(measureTimeout))
+  {
+    GetMeasurements();
 
-  ScreenHome();
-  
-  // Bluetooth
-  bluetooth.print("E");
-  bluetooth.print(humidity.value);
-  bluetooth.print(",");
-  bluetooth.print(temperature.value);
-  bluetooth.print("\n");
+    // DISPLAY DATA
+    Serial.print(humidity.value);
+    Serial.print(",\t");
+    Serial.println(temperature.value);
 
-  delay(2000);
+    // Bluetooth DATA
+    bluetooth.print("E");
+    bluetooth.print(humidity.value);
+    bluetooth.print(",");
+    bluetooth.print(temperature.value);
+    bluetooth.print("\n");
+  }
+
 }
 
 
